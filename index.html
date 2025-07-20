@@ -162,7 +162,37 @@
         function addExclusionRule(){participants.size>1?exclusions.push({from:null,to:null}):alert("Ajoutez au moins deux participants."),renderExclusionRules()}
         function deleteExclusionRule(t){exclusions.splice(t,1),renderExclusionRules()}
         function updateExclusion(t,e,a){exclusions[t][e]=a}
-        function renderExclusionRules(){const t=document.getElementById("exclusions-container");t.innerHTML="";const e=Array.from(participants.keys());exclusions.forEach(((a,n)=>{const i=document.createElement("div");i.className="exclusion-rule-item";const r=document.createElement("select"),l=document.createElement("select"),o=document.createElement("span");o.textContent="ne peut pas offrir à";const d=document.createElement("button");d.innerHTML="×",d.className="btn-danger",d.onclick=()=>deleteExclusionRule(n);[r,l].forEach(((t,i)=>{t.onchange=()=>updateExclusion(n,0===i?"from":"to",t.value);let l=`<option value="">Choisir</option>`;e.forEach((e=>{l+=`<option value="${e}" ${e===(0===i?a.from:a.to)?"selected":""}>${e}</option>`})),t.innerHTML=l})),i.append(r,o,l,d),t.appendChild(i)}))}
+        
+        // CORRIGÉ : Fonction de rendu des règles, maintenant robuste
+        function renderExclusionRules() {
+            const container = document.getElementById('exclusions-container');
+            container.innerHTML = '';
+            const participantNames = Array.from(participants.keys());
+            exclusions.forEach((rule, index) => {
+                const ruleItem = document.createElement('div');
+                ruleItem.className = 'exclusion-rule-item';
+                const selectFrom = document.createElement('select');
+                const selectTo = document.createElement('select');
+                const textSpan = document.createElement('span');
+                textSpan.textContent = 'ne peut pas offrir à';
+                const deleteBtn = document.createElement('button');
+                deleteBtn.innerHTML = '×';
+                deleteBtn.className = 'btn-danger';
+                deleteBtn.onclick = () => deleteExclusionRule(index);
+                [selectFrom, selectTo].forEach((select, selectIndex) => {
+                    select.onchange = () => updateExclusion(index, selectIndex === 0 ? 'from' : 'to', select.value);
+                    let optionsHTML = '<option value="">Choisir...</option>';
+                    participantNames.forEach(name => {
+                        const savedValue = selectIndex === 0 ? rule.from : rule.to;
+                        optionsHTML += `<option value="${name}" ${name === savedValue ? 'selected' : ''}>${name}</option>`;
+                    });
+                    select.innerHTML = optionsHTML;
+                });
+                ruleItem.append(selectFrom, textSpan, selectTo, deleteBtn);
+                container.appendChild(ruleItem);
+            });
+        }
+        
         function getSavedGroups(){return JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}")}
         function saveCurrentGroup(){const t=document.getElementById("group-name").value.trim();if(!t)return void alert("Donnez un nom au groupe.");const e=getSavedGroups();e[t]={participants:Array.from(participants.values()),budget:document.getElementById("budget").value,exclusions},localStorage.setItem(STORAGE_KEY,JSON.stringify(e)),loadGroupsIntoSelect(),alert(`Groupe "${t}" sauvegardé.`)}
         function loadGroupsIntoSelect(){const t=document.getElementById("group-select");t.innerHTML='<option value="">Choisir...</option>',Object.keys(getSavedGroups()).forEach(e=>{t.innerHTML+=`<option value="${e}">${e}</option>`})}
@@ -212,8 +242,7 @@
                 await sleep(1000);
             }
 
-            list.insertAdjacentHTML('afterend', "<p style='text-align:center; margin-top:15px; font-style:italic;'>Le secret est préservé ! Personne, pas même vous, ne peut voir les paires. Envoyez simplement le lien approprié à chaque participant.</p>");
-
+            list.insertAdjacentHTML('afterend', "<p style='text-align:center; margin-top:15px; font-style:italic;'>Le secret est préservé ! Personne ne voit les paires. Distribuez simplement les liens.</p>");
             confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
             
             const drawData = { gn: groupName, b: budget, p: Array.from(participants.values()), a: Array.from(assignments.entries()) };
@@ -221,9 +250,9 @@
             const uint8Array = new TextEncoder().encode(JSON.stringify(drawData));
             const base64String = btoa(String.fromCharCode.apply(null, uint8Array));
             const encodedData = base64String.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-
             const urlBase = window.location.href.split('#')[0];
             const linksContainer = contentDiv.querySelector('.shareable-links-container');
+            
             linksContainer.innerHTML = '<h4>Liens de Révélation Secrète</h4>';
             assignments.forEach((_, g) => linksContainer.innerHTML += `<div class="form-group"><strong>Pour ${g}:</strong><input type="text" value="${urlBase}#${encodedData}?person=${encodeURIComponent(g)}" readonly onclick="this.select()"></div>`);
             
@@ -236,7 +265,6 @@
             if (window.location.hash.includes('?person=')) {
                 document.getElementById('main-app').style.display = 'none';
                 const s = document.getElementById('secret-reveal-screen'); s.style.display = 'block';
-                const urlBase = window.location.href.split('#')[0]; 
                 try {
                     const parts = window.location.hash.substring(1).split('?');
                     let base64 = parts[0].replace(/-/g, '+').replace(/_/g, '/');
@@ -248,7 +276,7 @@
                     const assignments = new Map(data.a), allParticipants = new Map(data.p.map(p => [p.name, p]));
                     const receiverName = assignments.get(person), receiverInfo = allParticipants.get(receiverName);
                     
-                    s.innerHTML = `<h2>Bonjour ${person} !</h2><p>Pour le jeu de Noël du groupe "<strong>${data.gn}</strong>", tu offres un cadeau à...</p><div class="giftee">${receiverName}</div>${data.b ? `<p>Budget suggéré: <strong>${data.b}</strong></p>` : ''}${receiverInfo&&receiverInfo.wishlist?`<div class="wishlist-box"><h4>Idées cadeaux de ${receiverName}:</h4><p>${receiverInfo.wishlist.replace(/</g,"<")}</p></div>`:'<p>Aucune idée cadeau laissée.</p>'}<br><br><a href="${urlBase}" class="btn btn-secondary">Retourner à l'application</a>`;
+                    s.innerHTML = `<h2>Bonjour ${person} !</h2><p>Pour le jeu de Noël du groupe "<strong>${data.gn}</strong>", tu offres un cadeau à...</p><div class="giftee">${receiverName}</div>${data.b ? `<p>Budget suggéré: <strong>${data.b}</strong></p>` : ''}${receiverInfo&&receiverInfo.wishlist?`<div class="wishlist-box"><h4>Idées cadeaux de ${receiverName}:</h4><p>${receiverInfo.wishlist.replace(/</g,"<")}</p></div>`:'<p>Aucune idée cadeau laissée.</p>'}`;
                 } catch(e) { s.innerHTML = `<h2>Erreur</h2><p>Le lien est corrompu ou illisible.</p>`; console.error("Erreur de décodage:", e); }
             }
         }
