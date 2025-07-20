@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Le Noël du NoName - Version Finale</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #d9534f;
+            --secondary-color: #5cb85c;
+            --bg-color: #f0f2f5;
+            --card-bg-color: #ffffff;
+            --text-color: #333;
+            --light-text-color: #666;
+            --border-color: #ddd;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0; padding: 20px;
+        }
+        .app-container { max-width: 700px; margin: auto; }
+        .app-section {
+            background-color: var(--card-bg-color); border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            padding: 25px; margin-bottom: 25px;
+        }
+        h1, h2 { text-align: center; }
+        h1 { color: var(--primary-color); font-size: 2.5rem; margin-bottom: 5px; }
+        h2 { color: var(--text-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 20px; }
+        p { color: var(--light-text-color); text-align: center; margin-top: 0; }
+        .form-group { margin-bottom: 15px; }
+        label { font-weight: bold; display: block; margin-bottom: 5px; }
+        input[type="text"], input[type="number"], select {
+            width: 100%; padding: 10px; border-radius: 6px;
+            border: 1px solid var(--border-color); box-sizing: border-box;
+        }
+        .btn {
+            border: none; padding: 12px 20px; font-size: 1rem;
+            font-weight: bold; border-radius: 8px; cursor: pointer; transition: all 0.3s ease;
+        }
+        .btn-primary { background-color: var(--secondary-color); color: white; width: 100%; }
+        .btn-primary:hover:not(:disabled) { background-color: #4cae4c; }
+        .btn-primary:disabled { background-color: #9fdf9f; cursor: not-allowed; }
+        .btn-secondary { background-color: #f0f0f0; color: #333; }
+        .btn-danger { background-color: var(--primary-color); color: white; }
+        .participant-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .tag {
+            background-color: var(--primary-color); color: white; padding: 5px 10px;
+            border-radius: 15px; display: flex; align-items: center; font-size: 0.9rem;
+        }
+        .tag-delete { background: none; border: none; color: white; font-weight: bold; margin-left: 8px; cursor: pointer; opacity: 0.7; }
+        .tag-delete:hover { opacity: 1; }
+        .participant-list-item { 
+            display: grid; grid-template-columns: 1fr 2fr; gap: 10px;
+            align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #eee;
+        }
+        .exclusion-rule-item {
+             display: grid; grid-template-columns: 1fr auto 1fr auto; gap: 10px;
+             align-items: center; margin-bottom: 10px;
+        }
+        .results-container ul { list-style: none; padding: 0; }
+        .result-item { background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 10px; border-left: 5px solid var(--primary-color); }
+        .roulette {
+            display: inline-block; text-align: center; font-weight: bold; color: var(--primary-color);
+            padding: 2px 8px; background-color: #fff8f8; border-radius: 4px; min-width: 100px; transition: background-color 0.3s;
+        }
+        .modal-overlay {
+            display: none; position: fixed; z-index: 1000; top: 0; left: 0;
+            width: 100%; height: 100%; background-color: rgba(0,0,0,0.6);
+            align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background-color: #fff; padding: 30px; border-radius: 15px;
+            width: 90%; max-width: 600px; max-height: 90vh;
+            overflow-y: auto; position: relative;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.2); animation: slide-down 0.5s ease-out;
+        }
+        .modal-close { position: absolute; top: 15px; right: 20px; font-size: 28px; font-weight: bold; color: #aaa; cursor: pointer; transition: color 0.3s; }
+        .modal-close:hover { color: #333; }
+        @keyframes slide-down { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        #final-actions-container { margin-top: 20px; opacity: 0; display: flex; flex-wrap: wrap; gap: 10px;}
+        .fade-in { animation: fadeIn 1s forwards; }
+        @keyframes fadeIn { to { opacity: 1; } }
+        .secret-reveal-box { text-align: center; padding: 20px; }
+        .secret-reveal-box h2 { font-size: 2rem; }
+        .secret-reveal-box p { font-size: 1.2rem; }
+        .secret-reveal-box .giftee { font-size: 2.5rem; color: var(--primary-color); font-weight: bold; padding: 10px; background-color: #fff8f8; border-radius: 8px; margin: 10px 0; }
+        .wishlist-box { background: #f0f8ff; border: 1px solid #add8e6; padding: 15px; border-radius: 8px; margin-top: 20px; text-align: left; }
+    </style>
+</head>
+<body>
+    <div class="app-container" id="main-app">
+         <header><h1>Secret Santa Ultime</h1><p>Le générateur de tirage le plus complet pour vos fêtes !</p></header>
+        <section class="app-section">
+            <h2>Gestion des Groupes</h2>
+            <div class="form-group"><label for="group-select">Charger un groupe</label><select id="group-select"></select></div>
+            <button class="btn btn-secondary" onclick="loadSelectedGroup()">Charger</button>
+            <button class="btn btn-danger" onclick="deleteSelectedGroup()">Supprimer</button>
+        </section>
+        <section class="app-section">
+            <h2>Configuration</h2>
+            <div class="form-group"><label for="group-name">Nom du tirage</label><input type="text" id="group-name" placeholder="ex: Noël Famille 2024"></div>
+            <div class="form-group"><label for="budget">Budget suggéré</label><input type="text" id="budget" placeholder="ex: 20€"></div>
+        </section>
+        <section class="app-section">
+            <h2>Participants & Listes de Souhaits</h2>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="participant-name-input" placeholder="Nom du participant" style="flex-grow: 1;">
+                <button class="btn btn-secondary" onclick="addParticipant()">Ajouter</button>
+            </div>
+            <div class="participant-tags" id="participant-tags-container"></div>
+            <h3 style="margin-top: 30px;">Listes de souhaits (Facultatif)</h3>
+            <div id="wishlists-container"></div>
+        </section>
+        <section class="app-section">
+            <h2>Règles d'Exclusion</h2><p>Ajoutez des règles pour empêcher certaines paires.</p>
+            <div id="exclusions-container"></div>
+            <button class="btn btn-secondary" onclick="addExclusionRule()" style="margin-top: 15px;">Ajouter une règle</button>
+        </section>
+        <section class="app-section">
+            <h2>Lancer le Tirage</h2>
+            <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+                <input type="checkbox" id="forbid-direct-pairs" style="width: auto;"><label for="forbid-direct-pairs" style="font-weight: normal;">Interdire les paires directes (A à B et B à A)</label>
+            </div>
+            <button class="btn btn-primary" id="generate-btn" onclick="runDraw()">🎉 Lancer le Tirage ! 🎉</button>
+            <button class="btn btn-danger" onclick="saveCurrentGroup()" style="margin-top:10px;">Sauvegarder ce groupe</button>
+        </section>
+        <section class="app-section" id="main-results-section" style="display:none;">
+            <h2>Résultats du Dernier Tirage</h2>
+            <div id="main-results-content"></div>
+        </section>
+    </div>
+    <div class="modal-overlay" id="modal-container">
+        <div class="modal-content"><span class="modal-close" onclick="closeModal()">×</span><div id="modal-results-content"></div></div>
+    </div>
+    <div class="secret-reveal-box" id="secret-reveal-screen" style="display:none;"></div>
+    <script>
+        let audioContext, lastDrawData = null;
+        let participants = new Map(), exclusions = [];
+        const STORAGE_KEY = 'secretSantaGroups';
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            loadGroupsIntoSelect();
+            document.getElementById('participant-name-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); addParticipant(); }});
+            checkForSecretReveal();
+            document.getElementById('modal-container').addEventListener('click', (e) => { if (e.target.id === 'modal-container') { closeModal(); } });
+            window.addEventListener('click', () => { if (!audioContext) { audioContext = new (window.AudioContext || window.webkitAudioContext)(); } }, { once: true });
+        });
+        
+        function playSound(type){if(!audioContext)return;const t=audioContext.createOscillator(),e=audioContext.createGain();t.connect(e),e.connect(audioContext.destination),e.gain.value=.08,"tick"===type?(t.type="triangle",t.frequency.setValueAtTime(400*Math.random()+400,audioContext.currentTime)):"reveal"===(t.type="sine",t.frequency.setValueAtTime(988,audioContext.currentTime)),e.gain.exponentialRampToValueAtTime(1e-5,audioContext.currentTime+.2),t.start(),t.stop(audioContext.currentTime+.2)}
+        const sleep = ms => new Promise(res => setTimeout(res, ms));
+
+        function addParticipant(){const t=document.getElementById("participant-name-input"),e=t.value.trim();e&&!participants.has(e)&&(participants.set(e,{name:e,wishlist:""}),t.value="",renderAll(),playSound("tick")),t.focus()}
+        function deleteParticipant(t){participants.delete(t),exclusions=exclusions.filter(e=>e.from!==t&&e.to!==t),renderAll()}
+        function renderAll(){renderParticipantTags(),renderWishlists(),renderExclusionRules()}
+        function renderParticipantTags(){const t=document.getElementById("participant-tags-container");t.innerHTML="",participants.forEach(({name:e})=>{t.innerHTML+=`<div class="tag"><span>${e}</span><button class="tag-delete" onclick="deleteParticipant('${e}')">×</button></div>`})}
+        function renderWishlists(){const t=document.getElementById("wishlists-container");t.innerHTML="",participants.forEach(({name:e,wishlist:a})=>{t.innerHTML+=`<div class="participant-list-item"><label for="wishlist-${e}">${e}</label><input type="text" id="wishlist-${e}" value="${a||""}" oninput="updateWishlist('${e}',this.value)" placeholder="Idées cadeaux (facultatif)"></div>`})}
+        function updateWishlist(t,e){participants.has(t)&&(participants.get(t).wishlist=e)}
+        function addExclusionRule(){participants.size>1?exclusions.push({from:null,to:null}):alert("Ajoutez au moins deux participants."),renderExclusionRules()}
+        function deleteExclusionRule(t){exclusions.splice(t,1),renderExclusionRules()}
+        function updateExclusion(t,e,a){exclusions[t][e]=a}
+        function renderExclusionRules(){const t=document.getElementById("exclusions-container");t.innerHTML="";const e=Array.from(participants.keys());exclusions.forEach(((a,n)=>{const i=document.createElement("div");i.className="exclusion-rule-item";const r=document.createElement("select"),l=document.createElement("select"),o=document.createElement("span");o.textContent="ne peut pas offrir à";const d=document.createElement("button");d.innerHTML="×",d.className="btn-danger",d.onclick=()=>deleteExclusionRule(n);[r,l].forEach(((t,i)=>{t.onchange=()=>updateExclusion(n,0===i?"from":"to",t.value);let l=`<option value="">Choisir</option>`;e.forEach((e=>{l+=`<option value="${e}" ${e===(0===i?a.from:a.to)?"selected":""}>${e}</option>`})),t.innerHTML=l})),i.append(r,o,l,d),t.appendChild(i)}))}
+        function getSavedGroups(){return JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}")}
+        function saveCurrentGroup(){const t=document.getElementById("group-name").value.trim();if(!t)return void alert("Donnez un nom au groupe.");const e=getSavedGroups();e[t]={participants:Array.from(participants.values()),budget:document.getElementById("budget").value,exclusions},localStorage.setItem(STORAGE_KEY,JSON.stringify(e)),loadGroupsIntoSelect(),alert(`Groupe "${t}" sauvegardé.`)}
+        function loadGroupsIntoSelect(){const t=document.getElementById("group-select");t.innerHTML='<option value="">Choisir...</option>',Object.keys(getSavedGroups()).forEach(e=>{t.innerHTML+=`<option value="${e}">${e}</option>`})}
+        function loadSelectedGroup(){const t=document.getElementById("group-select").value;if(!t)return;const e=getSavedGroups()[t];participants.clear(),e.participants.forEach(t=>{participants.set(t.name,t)}),document.getElementById("group-name").value=t,document.getElementById("budget").value=e.budget||"",exclusions=e.exclusions||[],renderAll()}
+        function deleteSelectedGroup(){const t=document.getElementById("group-select").value;if(!t||!confirm(`Supprimer "${t}" ?`))return;const e=getSavedGroups();delete e[t],localStorage.setItem(STORAGE_KEY,JSON.stringify(e)),loadGroupsIntoSelect()}
+        
+        function openModal(){document.getElementById('modal-container').style.display='flex'}
+        function closeModal(){document.getElementById('modal-container').style.display='none';if(lastDrawData){document.getElementById('main-results-section').style.display='block';const t=document.getElementById('main-results-content');t.innerHTML=document.getElementById('modal-results-content').innerHTML;t.querySelector('#final-actions-container').classList.add("fade-in")}}
+
+        async function runDraw() {
+            const groupName = document.getElementById('group-name').value.trim();
+            if (!groupName) { alert("Donnez un nom à ce tirage."); return; }
+            if (participants.size < 2) { alert("Il faut au moins 2 participants."); return; }
+            document.getElementById('generate-btn').disabled = true;
+
+            const names = Array.from(participants.keys()), forbid = document.getElementById('forbid-direct-pairs').checked;
+            let assignments = null, attempts = 0;
+            while (attempts < 2000) {
+                let r = [...names].sort(() => .5 - Math.random()), valid = true, temp = new Map();
+                for (let i=0; i < names.length; i++) {
+                    const giver = names[i], receiver = r[i];
+                    if (giver === receiver || (forbid && temp.get(receiver) === giver) || exclusions.some(rule => rule.from === giver && rule.to === receiver)) { valid = false; break; }
+                    temp.set(giver, receiver);
+                }
+                if (valid) { assignments = temp; break; }
+                attempts++;
+            }
+            if (assignments) {
+                lastDrawData = { assignments, allNames: names, groupName, budget: document.getElementById('budget').value.trim() };
+                openModal();
+                await processAndDisplayResults(lastDrawData);
+            } else { alert("Impossible de trouver un tirage valide. Essayez de retirer des contraintes."); }
+            document.getElementById('generate-btn').disabled = false;
+        }
+
+        async function animatePair(el,names,final){return new Promise(e=>{const t=2e3,a=50;let n=setInterval(()=>{el.textContent=names[Math.floor(Math.random()*names.length)],playSound("tick")},a);setTimeout(()=>{clearInterval(n),el.textContent=final,el.style.backgroundColor="#e8f5e9",playSound("reveal"),e()},t)})}
+        
+        async function processAndDisplayResults({assignments, allNames, groupName, budget}) {
+            const contentDiv = document.getElementById('modal-results-content');
+            contentDiv.innerHTML = `<h2>Tirage: ${groupName}</h2><ul class="results-list"></ul><div class="shareable-links-container"></div><div id="final-actions-container"></div>`;
+            const list = contentDiv.querySelector('.results-list');
+            for (const [giver, receiver] of assignments.entries()) {
+                list.innerHTML += `<li class="result-item"><strong>${giver}</strong> offre un cadeau à <span class="roulette">...</span></li>`;
+                await animatePair(list.lastChild.querySelector('.roulette'), allNames, receiver);
+                await sleep(1000);
+            }
+            confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+            
+            const drawData = { gn: groupName, b: budget, p: Array.from(participants.values()), a: Array.from(assignments.entries()) };
+            
+            const uint8Array = new TextEncoder().encode(JSON.stringify(drawData));
+            const base64String = btoa(String.fromCharCode.apply(null, uint8Array));
+            const encodedData = base64String.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+            const urlBase = window.location.href.split('#')[0];
+            const linksContainer = contentDiv.querySelector('.shareable-links-container');
+            linksContainer.innerHTML = '<h4>Liens de Révélation Secrète</h4>';
+            assignments.forEach((_, g) => linksContainer.innerHTML += `<div class="form-group"><strong>Pour ${g}:</strong><input type="text" value="${urlBase}#${encodedData}?person=${encodeURIComponent(g)}" readonly onclick="this.select()"></div>`);
+            
+            const actionsContainer = contentDiv.querySelector('#final-actions-container');
+            actionsContainer.innerHTML = `<button class="btn btn-secondary" onclick="window.print()">Imprimer</button><button class="btn btn-secondary" onclick="copyResults()">Copier Résumé</button>`;
+            actionsContainer.classList.add("fade-in");
+        }
+
+        function copyResults() {
+            let txt = `Résultats pour: ${lastDrawData.groupName}\n${'-'.repeat(20)}\n`;
+            lastDrawData.assignments.forEach((r, g) => txt += `${g} offre à ${r}\n`);
+            navigator.clipboard.writeText(txt).then(() => alert('Résumé pour l\'organisateur copié !'));
+        }
+
+        function checkForSecretReveal() {
+            if (window.location.hash.includes('?person=')) {
+                document.getElementById('main-app').style.display = 'none';
+                const s = document.getElementById('secret-reveal-screen'); s.style.display = 'block';
+                const urlBase = window.location.href.split('#')[0];
+                try {
+                    const parts = window.location.hash.substring(1).split('?');
+                    let base64 = parts[0].replace(/-/g, '+').replace(/_/g, '/');
+                    while (base64.length % 4) { base64 += '='; }
+                    const decodedString = new TextDecoder().decode(Uint8Array.from(atob(base64), c => c.charCodeAt(0)));
+                    
+                    const data = JSON.parse(decodedString);
+                    const person = decodeURIComponent(new URLSearchParams(parts[1]).get('person'));
+                    const assignments = new Map(data.a), allParticipants = new Map(data.p.map(p => [p.name, p]));
+                    const receiverName = assignments.get(person), receiverInfo = allParticipants.get(receiverName);
+                    
+                    s.innerHTML = `<h2>Bonjour ${person} !</h2><p>Pour le Secret Santa du groupe "<strong>${data.gn}</strong>", tu offres un cadeau à...</p><div class="giftee">${receiverName}</div>${data.b ? `<p>Budget suggéré: <strong>${data.b}</strong></p>` : ''}${receiverInfo&&receiverInfo.wishlist?`<div class="wishlist-box"><h4>Idées cadeaux de ${receiverName}:</h4><p>${receiverInfo.wishlist.replace(/</g,"<")}</p></div>`:'<p>Aucune idée cadeau laissée.</p>'}<br><br><a href="${urlBase}" class="btn btn-secondary">Retour à l'application</a>`;
+                } catch(e) { s.innerHTML = `<h2>Erreur</h2><p>Le lien est corrompu ou illisible.</p>`; console.error(e); }
+            }
+        }
+    </script>
+</body>
+</html>
